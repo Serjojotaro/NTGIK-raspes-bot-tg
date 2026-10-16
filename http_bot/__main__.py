@@ -1,10 +1,7 @@
 import argparse
 import asyncio
 import logging
-import socket
 import sys
-from functools import partial
-from urllib.parse import urlparse
 
 from aiohttp_socks import ProxyConnectionError
 from aiogram import Bot, Dispatcher
@@ -13,20 +10,21 @@ from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramNetworkError, TelegramUnauthorizedError
 
-from .config import Config
+from core.diagnostics import check_site, tcp_check
+from core.scraper import NtgikClient
+from core.storage import Storage
+from .config import HttpConfig
 from .handlers import router
-from .scraper import NtgikClient, ScraperError
-from .storage import Storage
 
 log = logging.getLogger(__name__)
 
-PROXY_TIMEOUT = 5.0
 TELEGRAM_TIMEOUT = 15.0
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        prog="python -m bot", description="NTGIK schedule Telegram bot"
+        prog="python -m http_bot",
+        description="NTGIK schedule bot (aiogram over Bot API HTTPS)",
     )
     parser.add_argument(
         "--diagnose",
@@ -34,23 +32,6 @@ def _parse_args() -> argparse.Namespace:
         help="run connectivity checks (proxy, Telegram API, schedule site) and exit",
     )
     return parser.parse_args()
-
-
-async def _check_proxy(proxy_url: str) -> bool:
-    parsed = urlparse(proxy_url)
-    host = parsed.hostname
-    port = parsed.port or (443 if parsed.scheme in ("http", "https") else 1080)
-    if not host:
-        log.error("[proxy] invalid TELEGRAM_PROXY value: %s", proxy_url)
-        return False
-    connector = partial(socket.create_connection, (host, port), PROXY_TIMEOUT)
-    try:
-        sock = await asyncio.get_running_loop().run_in_executor(None, connector)
-    except OSError as exc:
-        log.error("[proxy] cannot reach %s:%s: %s", host, port, exc)
-        return False
-    sock.close()
-    return True
 
 
 async def _check_telegram(bot: Bot, proxy_set: bool) -> bool:
@@ -82,27 +63,17 @@ async def _check_telegram(bot: Bot, proxy_set: bool) -> bool:
     return True
 
 
-async def _check_site(client: NtgikClient) -> bool:
-    try:
-        courses = await client.get_courses()
-    except ScraperError as exc:
-        log.warning("[site] schedule site failed: %s", exc)
-        return False
-    log.info("[site] OK, courses: %s", courses)
-    return True
-
-
-async def _diagnose(bot: Bot, client: NtgikClient, config: Config) -> bool:
+async def _diagnose(bot: Bot, client: NtgikClient, config: HttpConfig) -> bool:
     ok = True
     if config.telegram_proxy:
-        proxy_ok = await _check_proxy(config.telegram_proxy)
+        proxy_ok = await tcp_check(config.telegram_proxy, default_port=3128)
         ok = ok and proxy_ok
         if not proxy_ok:
             log.warning("[telegram] check may fail because proxy is unreachable")
     else:
         log.info("[proxy] TELEGRAM_PROXY not set, connecting directly")
     ok = await _check_telegram(bot, proxy_set=bool(config.telegram_proxy)) and ok
-    site_ok = await _check_site(client)
+    site_ok = await check_site(client)
     if not site_ok:
         log.warning("[site] bot will start, but schedule requests will fail")
     return ok
@@ -114,7 +85,7 @@ async def main() -> int:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
-    config = Config.from_env()
+    config = HttpConfig.from_env()
 
     client = NtgikClient(
         config.site_base_url, timeout=config.http_timeout, cache_ttl=config.cache_ttl
