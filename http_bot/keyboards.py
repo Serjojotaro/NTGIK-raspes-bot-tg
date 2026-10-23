@@ -1,13 +1,15 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-CB_COURSE = "c"
-CB_GROUP = "g"
-CB_BACK_COURSES = "back:courses"
-CB_TODAY = "m:today"
-CB_PERIOD = "m:period"
-CB_CHANGE = "m:change"
-CB_WEEK_TYPE = "w"
+from core.keys import (
+    CB_BACK_COURSES,
+    CB_CHANGE,
+    CB_COURSE,
+    CB_GROUP,
+    CB_PERIOD,
+    CB_TODAY,
+    CB_WEEK_TYPE,
+)
 
 
 def courses_kb(courses: list[int]) -> InlineKeyboardMarkup:

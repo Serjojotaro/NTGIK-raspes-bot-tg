@@ -4,4 +4,6 @@ __pycache__/
 venv/
 .env
 *.db
+*.session
+*.session-journal
 .pytest_cache/

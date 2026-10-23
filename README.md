@@ -23,6 +23,17 @@ export $(grep -v '^#' .env | xargs)
 python -m bot
 ```
 
+## Диагностика
+
+```bash
+python -m bot --diagnose   # проверить прокси, Telegram API (get_me) и сайт расписания, затем выход
+```
+
+Проверяет по порядку: доступность `TELEGRAM_PROXY` (TCP), работу Bot API через текущую
+сессию (токен + сеть + прокси), доступность сайта расписания. При обычном запуске эти же
+проверки выполняются перед стартом поллинга, и при недоступности Telegram бот не стартует.
+В Docker: `docker run --rm -e BOT_TOKEN=... ntgik-bot python -m bot --diagnose`
+
 ## Docker
 
 ```bash

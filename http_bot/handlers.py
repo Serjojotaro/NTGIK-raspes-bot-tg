@@ -8,8 +8,8 @@ from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import CallbackQuery, Message
 
-from .formatter import format_day, format_week
-from .keyboards import (
+from core.formatter import format_day, format_week
+from core.keys import (
     CB_BACK_COURSES,
     CB_CHANGE,
     CB_COURSE,
@@ -17,14 +17,16 @@ from .keyboards import (
     CB_PERIOD,
     CB_TODAY,
     CB_WEEK_TYPE,
+)
+from core.scraper import NtgikClient, Schedule, ScraperError
+from core.storage import Storage
+from .keyboards import (
     courses_kb,
     groups_kb,
     main_kb,
     periods_kb,
     week_switch_kb,
 )
-from .scraper import NtgikClient, Schedule, ScraperError
-from .storage import Storage
 
 log = logging.getLogger(__name__)
 
